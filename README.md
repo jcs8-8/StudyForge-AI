@@ -101,6 +101,55 @@ open frontend/index.html
 
 ---
 
+## 🌐 Free Deployment (Render.com)
+
+You can deploy the full-stack app (backend + frontend) for free using Render.
+
+### 1. Prerequisites
+
+- Code pushed to GitHub (this repo).
+- MongoDB Atlas cluster created.
+- HuggingFace API key generated.
+
+### 2. Environment Variables
+
+Create a `.env` file locally (not committed to Git) with:
+
+```bash
+HF_API_KEY=hf_your_token_here
+MONGODB_URI=your_mongodb_uri_here
+CLIENT_URL=https://your-service-name.onrender.com
+```
+
+On Render, set the same variables in the **Environment** tab of the service:
+
+- `HF_API_KEY`
+- `MONGODB_URI`
+- `CLIENT_URL`
+
+### 3. Create Render Web Service
+
+1. Go to [Render](https://render.com) and sign up with GitHub.
+2. Click **New → Web Service**.
+3. Select this GitHub repo.
+4. Use these settings:
+   - **Environment**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+5. Click **Create Web Service** and wait for the build to finish.
+
+Render sets the `PORT` environment variable automatically. The backend listens on `process.env.PORT`, and the frontend is served from `frontend/index.html`, so no extra configuration is needed.
+
+After deployment, your app will be available at:
+
+```text
+https://your-service-name.onrender.com
+```
+
+Whenever you push changes to GitHub, Render will automatically redeploy the latest version.
+
+---
+
 ## 🔑 Getting a HuggingFace API Key (Free!)
 
 1. Go to https://huggingface.co/join — create free account
