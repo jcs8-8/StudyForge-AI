@@ -141,6 +141,9 @@
   .view { display: none; padding: 32px; min-height: 100vh; }
   .view.active { display: block; }
 
+/* Remove login/signup UX (still in DOM, but never visible) */
+#view-login, #view-signup { display: none !important; }
+
   /* ===== ONBOARDING ===== */
   #view-onboarding {
     display: none;
@@ -1202,23 +1205,13 @@ const MOTIVATIONAL_MSGS = [
 ];
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   loadFromStorage();
   updateGreeting();
 
-  // Check authentication
-  if (APP.token) {
-    // User is logged in, check if they have completed onboarding
-    if (APP.user && APP.user.goal) {
-      showMainApp();
-    } else {
-      // Logged in but no profile setup yet
-      navigate('onboarding');
-    }
-  } else {
-    // Not logged in, show login
-    navigate('login');
-  }
+  // Auto-auth to remove login/signup screens.
+  // Uses a local demo account stored in localStorage (no signup/login UI).
+  await ensureAuthenticatedAndRoute();
 
   if (APP.apiKey) document.getElementById('apiKeyInput').value = APP.apiKey;
   scheduleReminders();
@@ -1259,6 +1252,87 @@ function navigate(view) {
 }
 
 // ===== AUTHENTICATION FUNCTIONS =====
+async function ensureAuthenticatedAndRoute() {
+  // Route immediately if we already have a user in storage.
+  if (APP.token && APP.user) {
+    if (APP.user.goal) showMainApp();
+    else navigate('onboarding');
+    return;
+  }
+
+  try {
+    await autoLoginDemoUser();
+  } catch (e) {
+    console.warn('Auto-auth failed:', e);
+    showToast('warning', 'Offline / Limited Mode', 'Could not auto-login. You can still use onboarding UI.');
+  }
+
+  if (APP.user && APP.user.goal) showMainApp();
+  else navigate('onboarding');
+}
+
+function setAuthData(data) {
+  if (!data) throw new Error('No auth payload returned');
+  APP.token = data.token || '';
+  APP.user = data.user || null;
+  localStorage.setItem('sf_token', APP.token);
+  saveToStorage();
+}
+
+async function autoLoginDemoUser() {
+  // Create a per-browser demo account and store credentials locally.
+  // This avoids exposing a signup/login UI while still using your backend auth.
+  const existingEmail = localStorage.getItem('sf_demo_email');
+  const existingPassword = localStorage.getItem('sf_demo_password');
+
+  let email = existingEmail;
+  let password = existingPassword;
+  let name = localStorage.getItem('sf_demo_name') || 'Demo Learner';
+
+  if (!email || !password) {
+    const uuid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Math.random().toString(16).slice(2) + Date.now().toString(16));
+    name = `Demo Learner ${uuid.slice(0, 6)}`;
+    email = `demo+${uuid.slice(0, 10)}@studyforge.local`;
+    password = `demo-${uuid}`;
+    localStorage.setItem('sf_demo_email', email);
+    localStorage.setItem('sf_demo_password', password);
+    localStorage.setItem('sf_demo_name', name);
+  }
+
+  // Try login first (fast path)
+  try {
+    const loginResp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    if (loginResp.ok) {
+      const data = await loginResp.json();
+      setAuthData(data);
+      return data;
+    }
+  } catch (e) {
+    // fall through to register
+  }
+
+  // If login failed, register the demo account.
+  const registerResp = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password })
+  });
+
+  const data = await registerResp.json().catch(() => null);
+  if (!registerResp.ok) {
+    const errMsg = data?.error || 'Failed to create demo account';
+    throw new Error(errMsg);
+  }
+
+  setAuthData(data);
+  return data;
+}
+
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -1369,8 +1443,8 @@ function logout() {
   APP.chatHistory = [];
   localStorage.removeItem('sf_token');
   saveToStorage();
-  navigate('login');
-  showToast('info', '👋 Logged Out', 'See you next time!');
+  showToast('info', '🔄 Session Reset', 'Re-authenticating...');
+  ensureAuthenticatedAndRoute();
 }
 
 // ===== API HELPER =====
