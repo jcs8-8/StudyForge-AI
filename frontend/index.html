@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyForge AI — Your Intelligent Study Companion</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ===== DESIGN SYSTEM ===== */
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #6c63ff;
+    --accent2: #ff6b9d;
+    --accent3: #00d4aa;
+    --accent4: #ffd166;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --danger: #ff4d6d;
+    --success: #00d4aa;
+    --warning: #ffd166;
+    --glow: rgba(108,99,255,0.15);
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'Instrument Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 12px;
+    --radius-lg: 20px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== NOISE TEXTURE ===== */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.4;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ===== LAYOUT ===== */
+  .app { display: flex; min-height: 100vh; }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: 240px; min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 16px;
+    position: sticky; top: 0; height: 100vh;
+    overflow-y: auto;
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 32px; padding: 0 8px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .nav-section { margin-bottom: 24px; }
+  .nav-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+    color: var(--text3); text-transform: uppercase;
+    padding: 0 8px; margin-bottom: 8px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius);
+    cursor: pointer; transition: all 0.2s;
+    color: var(--text2); font-size: 14px; font-weight: 500;
+    border: 1px solid transparent;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active {
+    background: var(--glow);
+    border-color: rgba(108,99,255,0.3);
+    color: var(--accent);
+  }
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 8px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px;
+    background: var(--surface2); border-radius: var(--radius);
+  }
+
+  .user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: white;
+    flex-shrink: 0;
+  }
+
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 13px; font-weight: 600; truncate; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-streak { font-size: 11px; color: var(--warning); }
+
+  /* ===== MAIN CONTENT ===== */
+  .main { flex: 1; overflow-y: auto; }
+
+  /* ===== VIEWS ===== */
+  .view { display: none; padding: 32px; min-height: 100vh; }
+  .view.active { display: block; }
+
+  /* ===== ONBOARDING ===== */
+  #view-onboarding {
+    display: none;
+    align-items: center; justify-content: center;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 30% 20%, rgba(108,99,255,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 80%, rgba(255,107,157,0.06) 0%, transparent 60%);
+  }
+  #view-onboarding.active { display: flex; }
+
+  .onboarding-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 48px;
+    width: 100%; max-width: 560px;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+  }
+
+  .onboarding-header { text-align: center; margin-bottom: 40px; }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--glow); border: 1px solid rgba(108,99,255,0.3);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 12px; color: var(--accent); font-weight: 600;
+    margin-bottom: 20px;
+  }
+
+  .onboarding-title {
+    font-family: var(--font-display);
+    font-size: 36px; font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+
+  .onboarding-sub { color: var(--text2); font-size: 15px; line-height: 1.6; }
+
+  /* ===== FORM ===== */
+  .form-grid { display: grid; gap: 20px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+
+  .form-label {
+    font-size: 13px; font-weight: 600;
+    color: var(--text2); letter-spacing: 0.02em;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    transition: all 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--glow);
+  }
+
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-select { cursor: pointer; }
+  .form-select option { background: var(--surface2); }
+
+  .skill-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .skill-pill {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    color: var(--text2);
+  }
+
+  .skill-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .skill-pill.selected {
+    background: var(--glow);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 12px 24px;
+    border-radius: var(--radius); border: none;
+    font-family: var(--font-body); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #8b7cf6);
+    color: white;
+    box-shadow: 0 4px 20px rgba(108,99,255,0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(108,99,255,0.4);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-sm { padding: 8px 16px; font-size: 13px; }
+  .btn-lg { padding: 14px 32px; font-size: 16px; width: 100%; }
+
+  .btn-icon { width: 36px; height: 36px; padding: 0; border-radius: 8px; }
+
+  /* ===== PAGE HEADER ===== */
+  .page-header { margin-bottom: 28px; }
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 28px; font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .page-subtitle { color: var(--text2); font-size: 14px; }
+
+  /* ===== STATS ROW ===== */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    position: relative; overflow: hidden;
+    transition: all 0.2s;
+  }
+
+  .stat-card:hover { border-color: rgba(108,99,255,0.3); transform: translateY(-2px); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--stat-color, var(--accent));
+  }
+
+  .stat-label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 8px; }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 28px; font-weight: 800;
+    color: var(--stat-color, var(--accent));
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-sub { font-size: 11px; color: var(--text3); }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700;
+  }
+
+  /* ===== DASHBOARD GRID ===== */
+  .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .col-span-2 { grid-column: span 2; }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress-bar {
+    height: 6px; background: var(--border);
+    border-radius: 3px; overflow: hidden;
+    margin: 8px 0;
+  }
+
+  .progress-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ===== TASK ITEMS ===== */
+  .task-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .task-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    transition: all 0.2s; cursor: pointer;
+  }
+
+  .task-item:hover { border-color: rgba(108,99,255,0.3); }
+  .task-item.completed { opacity: 0.6; }
+  .task-item.missed { border-color: rgba(255,77,109,0.3); background: rgba(255,77,109,0.05); }
+
+  .task-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s; font-size: 10px;
+  }
+
+  .task-item.completed .task-check {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+  }
+
+  .task-item.missed .task-check {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+  }
+
+  .task-info { flex: 1; min-width: 0; }
+  .task-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .task-item.completed .task-title { text-decoration: line-through; color: var(--text2); }
+  .task-meta { font-size: 11px; color: var(--text3); }
+
+  .task-badge {
+    font-size: 11px; padding: 3px 8px;
+    border-radius: 20px; font-weight: 600;
+  }
+
+  .badge-easy { background: rgba(0,212,170,0.1); color: var(--accent3); }
+  .badge-medium { background: rgba(255,209,102,0.1); color: var(--warning); }
+  .badge-hard { background: rgba(255,107,157,0.1); color: var(--accent2); }
+
+  /* ===== STREAK DISPLAY ===== */
+  .streak-display {
+    display: flex; align-items: center; gap: 16px;
+    background: linear-gradient(135deg, rgba(255,209,102,0.1), rgba(255,107,157,0.05));
+    border: 1px solid rgba(255,209,102,0.2);
+    border-radius: var(--radius-lg); padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+
+  .streak-number {
+    font-family: var(--font-display);
+    font-size: 48px; font-weight: 800;
+    color: var(--warning); line-height: 1;
+  }
+
+  .streak-text { flex: 1; }
+  .streak-label { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .streak-sub { font-size: 13px; color: var(--text2); }
+
+  /* ===== INSIGHT CARD ===== */
+  .insight-card {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    margin-bottom: 10px;
+    font-size: 13px; line-height: 1.5;
+  }
+
+  .insight-card.warning { border-left-color: var(--warning); }
+  .insight-card.success { border-left-color: var(--success); }
+  .insight-card.danger { border-left-color: var(--danger); }
+
+  /* ===== CHAT ===== */
+  .chat-container { display: flex; flex-direction: column; height: calc(100vh - 64px); }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto;
+    padding: 20px; display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .message { display: flex; gap: 12px; max-width: 80%; }
+  .message.user { align-self: flex-end; flex-direction: row-reverse; }
+
+  .message-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+  }
+
+  .message.ai .message-avatar {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+  }
+
+  .message.user .message-avatar {
+    background: var(--surface2); border: 1px solid var(--border);
+  }
+
+  .message-bubble {
+    padding: 12px 16px; border-radius: var(--radius-lg);
+    font-size: 14px; line-height: 1.6;
+  }
+
+  .message.ai .message-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+
+  .message.user .message-bubble {
+    background: linear-gradient(135deg, var(--accent), #8b7cf6);
+    color: white; border-top-right-radius: 4px;
+  }
+
+  .chat-input-area {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; gap: 12px; align-items: flex-end;
+  }
+
+  .chat-input {
+    flex: 1; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 16px; color: var(--text);
+    font-family: var(--font-body); font-size: 14px;
+    outline: none; resize: none; min-height: 48px; max-height: 120px;
+    transition: border-color 0.2s;
+  }
+
+  .chat-input:focus { border-color: var(--accent); }
+
+  /* ===== WEEK VIEW ===== */
+  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+
+  .day-card {
+    background: var(--surface2); border-radius: var(--radius);
+    padding: 12px 8px; text-align: center;
+    border: 1px solid var(--border); cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .day-card:hover { border-color: rgba(108,99,255,0.3); }
+  .day-card.today { border-color: var(--accent); background: var(--glow); }
+  .day-card.completed { border-color: var(--success); }
+  .day-card.missed { border-color: var(--danger); }
+
+  .day-name { font-size: 10px; color: var(--text3); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+  .day-number { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .day-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); margin: 0 auto; }
+  .day-card.completed .day-dot { background: var(--success); }
+  .day-card.missed .day-dot { background: var(--danger); }
+  .day-card.today .day-dot { background: var(--accent); }
+
+  /* ===== PLAN VIEW ===== */
+  .week-section { margin-bottom: 28px; }
+  .week-title {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700;
+    color: var(--accent); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .week-title::before { content: ''; display: block; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; }
+
+  /* ===== LOADING ===== */
+  .loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,10,15,0.9);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100; gap: 20px;
+    backdrop-filter: blur(8px);
+  }
+
+  .loading-spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 700;
+    color: var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .loading-sub { font-size: 13px; color: var(--text2); font-family: var(--font-mono); }
+
+  /* ===== REMINDER TOAST ===== */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    min-width: 280px; max-width: 340px;
+    display: flex; align-items: flex-start; gap: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+
+  .toast.removing { animation: slideOut 0.3s ease forwards; }
+
+  .toast-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .toast-content { flex: 1; }
+  .toast-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .toast-body { font-size: 12px; color: var(--text2); line-height: 1.4; }
+
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.warning { border-left: 3px solid var(--warning); }
+  .toast.info { border-left: 3px solid var(--accent); }
+
+  /* ===== CHART BARS ===== */
+  .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 100px; margin-top: 16px; }
+  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .chart-bar {
+    width: 100%; border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, var(--accent), rgba(108,99,255,0.4));
+    transition: height 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .chart-bar.missed { background: linear-gradient(180deg, var(--danger), rgba(255,77,109,0.3)); }
+  .chart-label { font-size: 10px; color: var(--text3); font-weight: 500; }
+
+  /* ===== GAMIFICATION ===== */
+  .xp-bar-wrap { margin: 12px 0; }
+  .xp-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+  .xp-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .xp-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent4), var(--accent2));
+    transition: width 1s ease;
+  }
+
+  .badges-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .badge-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+    border: 1px solid;
+  }
+  .badge-chip.earned { background: rgba(255,209,102,0.1); border-color: rgba(255,209,102,0.3); color: var(--warning); }
+  .badge-chip.locked { background: var(--surface2); border-color: var(--border); color: var(--text3); opacity: 0.6; }
+
+  /* ===== PLAN JSON DISPLAY ===== */
+  .plan-json {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--accent3);
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  /* ===== UTILS ===== */
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 12px; }
+  .text-sm { font-size: 13px; }
+  .text-xs { font-size: 11px; }
+  .text-muted { color: var(--text2); }
+  .text-accent { color: var(--accent); }
+  .text-success { color: var(--success); }
+  .text-danger { color: var(--danger); }
+  .text-warning { color: var(--warning); }
+  .font-mono { font-family: var(--font-mono); }
+  .font-bold { font-weight: 700; }
+  .w-full { width: 100%; }
+
+  /* ===== REMINDERS VIEW ===== */
+  .reminder-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px; background: var(--surface2);
+    border-radius: var(--radius); border: 1px solid var(--border);
+    margin-bottom: 10px; transition: all 0.2s;
+  }
+
+  .reminder-icon { font-size: 22px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--surface); border-radius: 10px; flex-shrink: 0; }
+  .reminder-info { flex: 1; }
+  .reminder-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .reminder-time { font-size: 12px; color: var(--text2); }
+  .reminder-toggle { position: relative; }
+  .toggle-input { display: none; }
+  .toggle-label {
+    display: block; width: 40px; height: 22px;
+    background: var(--border); border-radius: 11px;
+    cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .toggle-label::after {
+    content: ''; position: absolute;
+    width: 16px; height: 16px; background: white; border-radius: 50%;
+    top: 3px; left: 3px; transition: all 0.2s;
+  }
+  .toggle-input:checked + .toggle-label { background: var(--accent); }
+  .toggle-input:checked + .toggle-label::after { left: 21px; }
+
+  /* ===== SETTINGS ===== */
+  .settings-section { margin-bottom: 28px; }
+  .settings-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; margin-bottom: 16px; color: var(--text2); }
+  .settings-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .settings-item:last-child { border-bottom: none; }
+  .settings-item-label { font-size: 14px; font-weight: 500; }
+  .settings-item-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* ===== THINKING ANIMATION ===== */
+  .thinking { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .thinking span {
+    width: 6px; height: 6px; background: var(--text3);
+    border-radius: 50%; animation: bounce 1.2s ease infinite;
+  }
+  .thinking span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .col-span-2 { grid-column: span 1; }
+    .form-row { grid-template-columns: 1fr; }
+    .week-grid { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">StudyForge AI</div>
+  <div class="loading-sub" id="loadingMsg">Generating your personalized plan...</div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== APP ===== -->
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar" style="display:none">
+    <div class="logo">
+      <div class="logo-icon">📚</div>
+      <span class="logo-text">StudyForge</span>
+    </div>
+
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item active" onclick="navigate('dashboard')">
+          <span class="nav-icon">🏠</span> Dashboard
+        </div>
+        <div class="nav-item" onclick="navigate('plan')">
+          <span class="nav-icon">📋</span> Study Plan
+        </div>
+        <div class="nav-item" onclick="navigate('progress')">
+          <span class="nav-icon">📊</span> Progress
+        </div>
+        <div class="nav-item" onclick="navigate('chat')">
+          <span class="nav-icon">💬</span> AI Chat
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Tools</div>
+        <div class="nav-item" onclick="navigate('reminders')">
+          <span class="nav-icon">🔔</span> Reminders
+        </div>
+        <div class="nav-item" onclick="navigate('settings')">
+          <span class="nav-icon">⚙️</span> Settings
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="sidebarAvatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarName">Guest</div>
+          <div class="user-streak" id="sidebarStreak">🔥 0 day streak</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="logout()" style="width: 100%; margin-top: 12px;">
+        🚪 Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ===== LOGIN VIEW ===== -->
+    <div class="view active" id="view-login">
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div class="onboarding-card" style="max-width: 400px;">
+          <div class="onboarding-header">
+            <div class="hero-badge">🔐 Welcome Back</div>
+            <h1 class="onboarding-title">Sign In</h1>
+            <p class="onboarding-sub">Continue your learning journey</p>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Email *</label>
+              <input type="email" class="form-input" id="login-email" placeholder="your@email.com">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Password *</label>
+              <input type="password" class="form-input" id="login-password" placeholder="Your password">
+            </div>
+
+            <button class="btn btn-primary btn-lg" onclick="login()" id="loginBtn">
+              Sign In
+            </button>
+
+            <div style="text-align: center; margin-top: 16px;">
+              <span class="text-muted">Don't have an account? </span>
+              <a href="#" onclick="showSignup()" class="text-accent">Sign Up</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SIGNUP VIEW ===== -->
+    <div class="view" id="view-signup">
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div class="onboarding-card" style="max-width: 400px;">
+          <div class="onboarding-header">
+            <div class="hero-badge">🚀 Get Started</div>
+            <h1 class="onboarding-title">Create Account</h1>
+            <p class="onboarding-sub">Join StudyForge AI and unlock your potential</p>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" class="form-input" id="signup-name" placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Email *</label>
+              <input type="email" class="form-input" id="signup-email" placeholder="your@email.com">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Password *</label>
+              <input type="password" class="form-input" id="signup-password" placeholder="At least 6 characters">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Confirm Password *</label>
+              <input type="password" class="form-input" id="signup-confirm" placeholder="Confirm your password">
+            </div>
+
+            <button class="btn btn-primary btn-lg" onclick="signup()" id="signupBtn">
+              Create Account
+            </button>
+
+            <div style="text-align: center; margin-top: 16px;">
+              <span class="text-muted">Already have an account? </span>
+              <a href="#" onclick="showLogin()" class="text-accent">Sign In</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ONBOARDING VIEW ===== -->
+    <div class="view active" id="view-onboarding">
+      <div class="onboarding-card">
+        <div class="onboarding-header">
+          <div class="hero-badge">🤖 AI-Powered Learning</div>
+          <h1 class="onboarding-title">Your Intelligent Study Companion</h1>
+          <p class="onboarding-sub">Tell us about your goals and we'll build a personalized, adaptive study plan just for you.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Your Name *</label>
+            <input type="text" class="form-input" id="inp-name" placeholder="e.g. Arjun Sharma">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Study Goal *</label>
+            <input type="text" class="form-input" id="inp-goal" placeholder="e.g. DSA, Web Dev, GATE 2025">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Hours/Day *</label>
+              <input type="number" class="form-input" id="inp-hours" min="1" max="12" value="3" placeholder="3">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deadline</label>
+              <input type="date" class="form-input" id="inp-deadline">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Skill Level *</label>
+            <div class="skill-pills">
+              <div class="skill-pill selected" onclick="selectPill(this,'level')">🌱 Beginner</div>
+              <div class="skill-pill" onclick="selectPill(this,'level')">⚡ Intermediate</div>
+              <div class="skill-pill" onclick="selectPill(this,'level')">🔥 Advanced</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Topics to Focus On</label>
+            <div class="skill-pills" id="topic-pills">
+              <div class="skill-pill selected" onclick="selectPill(this,'topic',true)">Arrays</div>
+              <div class="skill-pill" onclick="selectPill(this,'topic',true)">Trees</div>
+              <div class="skill-pill" onclick="selectPill(this,'topic',true)">DP</div>
+              <div class="skill-pill" onclick="selectPill(this,'topic',true)">Graphs</div>
+              <div class="skill-pill" onclick="selectPill(this,'topic',true)">System Design</div>
+              <div class="skill-pill" onclick="selectPill(this,'topic',true)">React</div>
+              <div class="skill-pill" onclick="selectPill(this,'topic',true)">Node.js</div>
+              <div class="skill-pill" onclick="selectPill(this,'topic',true)">ML/AI</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Additional Context (optional)</label>
+            <textarea class="form-textarea" id="inp-context" placeholder="e.g. I have a job interview in 3 weeks, I know Python basics..."></textarea>
+          </div>
+
+          <button class="btn btn-primary btn-lg" onclick="generatePlan()">
+            🚀 Generate My Study Plan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DASHBOARD VIEW ===== -->
+    <div class="view" id="view-dashboard">
+      <div class="page-header">
+        <h1 class="page-title">Good <span id="greeting">Morning</span>, <span id="dashName">Learner</span>! 👋</h1>
+        <p class="page-subtitle" id="dashDate">Today's overview of your study journey</p>
+      </div>
+
+      <!-- STREAK -->
+      <div class="streak-display">
+        <div class="streak-number" id="streakNum">0</div>
+        <div class="streak-text">
+          <div class="streak-label">🔥 Day Streak!</div>
+          <div class="streak-sub" id="streakMsg">Start your learning journey today</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:32px" id="streakEmoji">🌱</div>
+          <div class="text-xs text-muted mt-2" id="streakLevel">Level 1</div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-row">
+        <div class="stat-card" style="--stat-color: var(--accent)">
+          <div class="stat-label">Tasks Completed</div>
+          <div class="stat-value" id="stat-completed">0</div>
+          <div class="stat-sub">this week</div>
+        </div>
+        <div class="stat-card" style="--stat-color: var(--accent2)">
+          <div class="stat-label">Hours Studied</div>
+          <div class="stat-value" id="stat-hours">0</div>
+          <div class="stat-sub">this week</div>
+        </div>
+        <div class="stat-card" style="--stat-color: var(--accent3)">
+          <div class="stat-label">Weekly Goal</div>
+          <div class="stat-value" id="stat-goal-pct">0%</div>
+          <div class="stat-sub">completion</div>
+        </div>
+        <div class="stat-card" style="--stat-color: var(--accent4)">
+          <div class="stat-label">XP Points</div>
+          <div class="stat-value" id="stat-xp">0</div>
+          <div class="stat-sub">total earned</div>
+        </div>
+      </div>
+
+      <!-- WEEK OVERVIEW -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <span class="card-title">📅 This Week</span>
+          <span class="text-sm text-muted" id="weekRange">Mon — Sun</span>
+        </div>
+        <div class="week-grid" id="weekGrid"></div>
+      </div>
+
+      <!-- DASHBOARD GRID -->
+      <div class="dashboard-grid">
+
+        <!-- TODAY'S TASKS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚡ Today's Tasks</span>
+            <button class="btn btn-secondary btn-sm" onclick="adaptPlan()">🔄 Adapt</button>
+          </div>
+          <div class="task-list" id="todayTasks">
+            <div class="text-sm text-muted">Loading tasks...</div>
+          </div>
+        </div>
+
+        <!-- AI INSIGHTS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🧠 AI Insights</span>
+            <button class="btn btn-secondary btn-sm" onclick="refreshInsights()">↻ Refresh</button>
+          </div>
+          <div id="insightsContainer">
+            <div class="text-sm text-muted">Analyzing your progress...</div>
+          </div>
+
+          <!-- XP PROGRESS -->
+          <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border)">
+            <div class="card-title" style="font-size:14px;margin-bottom:8px">🏆 Level Progress</div>
+            <div class="xp-bar-wrap">
+              <div class="xp-label">
+                <span id="xpLevelLabel">Level 1 — Apprentice</span>
+                <span id="xpProgress">0 / 500 XP</span>
+              </div>
+              <div class="xp-bar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+            </div>
+            <div class="badges-row" id="badgesRow"></div>
+          </div>
+        </div>
+
+        <!-- WEEKLY CHART -->
+        <div class="card col-span-2">
+          <div class="card-header">
+            <span class="card-title">📈 7-Day Activity</span>
+            <span class="text-xs text-muted font-mono">Tasks completed per day</span>
+          </div>
+          <div class="chart-bars" id="activityChart"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== STUDY PLAN VIEW ===== -->
+    <div class="view" id="view-plan">
+      <div class="page-header">
+        <h1 class="page-title">📋 Your Study Plan</h1>
+        <p class="page-subtitle" id="planSubtitle">Personalized plan for your goals</p>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-bottom:24px">
+        <button class="btn btn-primary btn-sm" onclick="generatePlan(true)">🔄 Regenerate Plan</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportPlan()">📥 Export JSON</button>
+        <button class="btn btn-secondary btn-sm" onclick="adaptPlan()">🧠 Adapt to Progress</button>
+      </div>
+
+      <div id="planContainer">
+        <div class="text-sm text-muted">Generating plan...</div>
+      </div>
+    </div>
+
+    <!-- ===== PROGRESS VIEW ===== -->
+    <div class="view" id="view-progress">
+      <div class="page-header">
+        <h1 class="page-title">📊 Progress Tracker</h1>
+        <p class="page-subtitle">Detailed breakdown of your learning journey</p>
+      </div>
+
+      <div class="stats-row" style="margin-bottom:24px">
+        <div class="stat-card" style="--stat-color:var(--success)">
+          <div class="stat-label">Completed</div>
+          <div class="stat-value" id="prog-completed">0</div>
+          <div class="stat-sub">tasks done</div>
+        </div>
+        <div class="stat-card" style="--stat-color:var(--danger)">
+          <div class="stat-label">Missed</div>
+          <div class="stat-value" id="prog-missed">0</div>
+          <div class="stat-sub">tasks skipped</div>
+        </div>
+        <div class="stat-card" style="--stat-color:var(--warning)">
+          <div class="stat-label">Consistency</div>
+          <div class="stat-value" id="prog-consistency">0%</div>
+          <div class="stat-sub">overall rate</div>
+        </div>
+        <div class="stat-card" style="--stat-color:var(--accent)">
+          <div class="stat-label">Best Streak</div>
+          <div class="stat-value" id="prog-best-streak">0</div>
+          <div class="stat-sub">days in a row</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📅 All Tasks</span></div>
+          <div id="allTasksList" class="task-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">📜 Activity Log</span></div>
+          <div id="activityLog" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CHAT VIEW ===== -->
+    <div class="view" id="view-chat" style="padding:0">
+      <div class="chat-container">
+        <div style="padding:20px 24px 0; border-bottom:1px solid var(--border); background:var(--surface)">
+          <h2 style="font-family:var(--font-display);font-size:20px;font-weight:700">💬 AI Study Assistant</h2>
+          <p class="text-sm text-muted" style="padding-bottom:16px">Ask anything about your study plan, doubts, or schedule modifications</p>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+          <textarea class="chat-input" id="chatInput" placeholder="Ask about your plan, doubts, or say 'modify my schedule'..." rows="1" onkeydown="handleChatKey(event)"></textarea>
+          <button class="btn btn-primary btn-icon" onclick="sendChat()" style="width:48px;height:48px;border-radius:12px">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== REMINDERS VIEW ===== -->
+    <div class="view" id="view-reminders">
+      <div class="page-header">
+        <h1 class="page-title">🔔 Smart Reminders</h1>
+        <p class="page-subtitle">Manage your study notifications</p>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><span class="card-title">Active Reminders</span></div>
+        <div id="remindersList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🧪 Test Notifications</span>
+        </div>
+        <p class="text-sm text-muted" style="margin-bottom:16px">Simulate the reminder system</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="testReminder('daily')">📅 Daily Reminder</button>
+          <button class="btn btn-secondary btn-sm" onclick="testReminder('motivate')">💪 Motivational</button>
+          <button class="btn btn-secondary btn-sm" onclick="testReminder('missed')">⚠️ Missed Task</button>
+          <button class="btn btn-secondary btn-sm" onclick="testReminder('streak')">🔥 Streak Alert</button>
+          <button class="btn btn-secondary btn-sm" onclick="testReminder('adapt')">🧠 Plan Adapted</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SETTINGS VIEW ===== -->
+    <div class="view" id="view-settings">
+      <div class="page-header">
+        <h1 class="page-title">⚙️ Settings</h1>
+        <p class="page-subtitle">Manage your preferences and API configuration</p>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="settings-section">
+          <div class="settings-title">🔑 API Configuration</div>
+          <div class="form-group">
+            <label class="form-label">Hugging Face API Key</label>
+            <input type="password" class="form-input" id="apiKeyInput" placeholder="hf_...">
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-primary btn-sm" onclick="saveApiKey()">Save Key</button>
+            <span class="text-xs text-muted" style="margin-left:12px" id="apiKeyStatus"></span>
+          </div>
+        </div>
+
+        <div class="settings-section" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+          <div class="settings-title">👤 Profile</div>
+          <div class="settings-item">
+            <div><div class="settings-item-label" id="profile-name">Loading...</div><div class="settings-item-sub">Name</div></div>
+          </div>
+          <div class="settings-item">
+            <div><div class="settings-item-label" id="profile-goal">Loading...</div><div class="settings-item-sub">Current Goal</div></div>
+          </div>
+          <div class="settings-item">
+            <div><div class="settings-item-label" id="profile-level">Loading...</div><div class="settings-item-sub">Skill Level</div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary btn-sm" style="border-color:var(--danger);color:var(--danger)" onclick="resetApp()">🗑️ Reset All Data</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ============================================================
+//  STUDYFORGE AI — COMPLETE FRONTEND APPLICATION
+//  Architecture: Single-page app with in-memory + localStorage
+// ============================================================
+
+// ===== STATE =====
+let APP = {
+  user: null,
+  plan: null,
+  progress: [],
+  chatHistory: [],
+  streak: 0,
+  bestStreak: 0,
+  xp: 0,
+  apiKey: localStorage.getItem('sf_apikey') || '',
+  token: localStorage.getItem('sf_token') || '',
+  reminderTimers: []
+};
+
+// ===== CONSTANTS =====
+const LEVELS = [
+  { name: 'Apprentice', min: 0, max: 500 },
+  { name: 'Scholar', min: 500, max: 1200 },
+  { name: 'Expert', min: 1200, max: 2500 },
+  { name: 'Master', min: 2500, max: 5000 },
+  { name: 'Legend', min: 5000, max: Infinity }
+];
+
+const BADGES = [
+  { id: 'first_task', icon: '⭐', label: 'First Task', xp: 1 },
+  { id: 'streak_3', icon: '🔥', label: '3-Day Streak', streak: 3 },
+  { id: 'streak_7', icon: '🏆', label: 'Week Warrior', streak: 7 },
+  { id: 'tasks_10', icon: '💎', label: '10 Tasks Done', completed: 10 },
+  { id: 'tasks_25', icon: '🚀', label: '25 Tasks Done', completed: 25 },
+  { id: 'consistent', icon: '🎯', label: 'Consistency Pro', consistency: 80 }
+];
+
+const MOTIVATIONAL_MSGS = [
+  "Every expert was once a beginner. Keep pushing! 💪",
+  "Small consistent steps lead to massive results. You're doing great! 🌟",
+  "Your future self is counting on what you do today. Stay focused! 🎯",
+  "Progress, not perfection. Keep going! ✨",
+  "The harder you work, the luckier you get. Keep grinding! 🔥",
+  "Don't stop when you're tired. Stop when you're done! 💎",
+  "You're closer to your goal than you were yesterday! 📈",
+  "Consistency beats intensity every time. Show up daily! 🏆"
+];
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  loadFromStorage();
+  updateGreeting();
+
+  // Check authentication
+  if (APP.token) {
+    // User is logged in, check if they have completed onboarding
+    if (APP.user && APP.user.goal) {
+      showMainApp();
+    } else {
+      // Logged in but no profile setup yet
+      navigate('onboarding');
+    }
+  } else {
+    // Not logged in, show login
+    navigate('login');
+  }
+
+  if (APP.apiKey) document.getElementById('apiKeyInput').value = APP.apiKey;
+  scheduleReminders();
+});
+
+function loadFromStorage() {
+  try {
+    const saved = localStorage.getItem('sf_data');
+    if (saved) {
+      const data = JSON.parse(saved);
+      APP = { ...APP, ...data };
+    }
+  } catch(e) { console.error('Load error', e); }
+}
+
+function saveToStorage() {
+  try {
+    const toSave = { user: APP.user, plan: APP.plan, progress: APP.progress,
+      chatHistory: APP.chatHistory, streak: APP.streak, bestStreak: APP.bestStreak, xp: APP.xp };
+    localStorage.setItem('sf_data', JSON.stringify(toSave));
+  } catch(e) {}
+}
+
+// ===== NAVIGATION =====
+function navigate(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.toLowerCase().includes(view)) n.classList.add('active');
+  });
+  if (view === 'dashboard') renderDashboard();
+  if (view === 'plan') renderPlanView();
+  if (view === 'progress') renderProgressView();
+  if (view === 'reminders') renderReminders();
+  if (view === 'settings') renderSettings();
+  if (view === 'chat' && APP.chatHistory.length === 0) initChat();
+}
+
+// ===== AUTHENTICATION FUNCTIONS =====
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!email || !password) {
+    showToast('warning', '⚠️ Required Fields', 'Please fill in all fields');
+    return;
+  }
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.textContent = 'Signing In...';
+
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      APP.token = data.token;
+      APP.user = data.user;
+      localStorage.setItem('sf_token', APP.token);
+      saveToStorage();
+
+      showToast('success', '🎉 Welcome Back!', `Hello ${data.user.name}!`);
+      navigate('dashboard');
+    } else {
+      showToast('error', '❌ Login Failed', data.error || 'Invalid credentials');
+    }
+  } catch (error) {
+    showToast('error', '❌ Connection Error', 'Please check your internet connection');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Sign In';
+}
+
+async function signup() {
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const confirm = document.getElementById('signup-confirm').value;
+
+  if (!name || !email || !password || !confirm) {
+    showToast('warning', '⚠️ Required Fields', 'Please fill in all fields');
+    return;
+  }
+
+  if (password !== confirm) {
+    showToast('warning', '⚠️ Password Mismatch', 'Passwords do not match');
+    return;
+  }
+
+  if (password.length < 6) {
+    showToast('warning', '⚠️ Password Too Short', 'Password must be at least 6 characters');
+    return;
+  }
+
+  const btn = document.getElementById('signupBtn');
+  btn.disabled = true;
+  btn.textContent = 'Creating Account...';
+
+  try {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      APP.token = data.token;
+      APP.user = data.user;
+      localStorage.setItem('sf_token', APP.token);
+      saveToStorage();
+
+      showToast('success', '🎉 Account Created!', 'Welcome to StudyForge AI!');
+      navigate('onboarding');
+    } else {
+      showToast('error', '❌ Registration Failed', data.error || 'Failed to create account');
+    }
+  } catch (error) {
+    showToast('error', '❌ Connection Error', 'Please check your internet connection');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Create Account';
+}
+
+function showLogin() {
+  navigate('login');
+}
+
+function showSignup() {
+  navigate('signup');
+}
+
+function logout() {
+  APP.token = '';
+  APP.user = null;
+  APP.plan = null;
+  APP.progress = [];
+  APP.chatHistory = [];
+  localStorage.removeItem('sf_token');
+  saveToStorage();
+  navigate('login');
+  showToast('info', '👋 Logged Out', 'See you next time!');
+}
+
+// ===== API HELPER =====
+async function apiCall(endpoint, options = {}) {
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    ...options
+  };
+
+  if (APP.token) {
+    config.headers.Authorization = `Bearer ${APP.token}`;
+  }
+
+  const response = await fetch(endpoint, config);
+
+  if (response.status === 401) {
+    // Token expired or invalid
+    logout();
+    throw new Error('Authentication required');
+  }
+
+  return response;
+}
+
+// ===== ONBOARDING FORM HELPERS =====
+let selectedLevel = 'Beginner';
+let selectedTopics = ['Arrays'];
+
+function selectPill(el, group, multi = false) {
+  if (multi) {
+    el.classList.toggle('selected');
+    selectedTopics = Array.from(document.querySelectorAll('#topic-pills .skill-pill.selected')).map(p => p.textContent.trim());
+  } else {
+    el.closest('.skill-pills').querySelectorAll('.skill-pill').forEach(p => p.classList.remove('selected'));
+    el.classList.add('selected');
+    if (group === 'level') selectedLevel = el.textContent.replace(/[🌱⚡🔥]/g,'').trim();
+  }
+}
+
+// ===== GENERATE PLAN =====
+async function generatePlan(regen = false) {
+  const name = document.getElementById('inp-name')?.value?.trim();
+  const goal = document.getElementById('inp-goal')?.value?.trim();
+  const hours = parseInt(document.getElementById('inp-hours')?.value || 3);
+  const deadline = document.getElementById('inp-deadline')?.value;
+  const context = document.getElementById('inp-context')?.value?.trim();
+
+  if (!regen && (!name || !goal)) {
+    showToast('warning', '⚠️ Required Fields', 'Please fill in your name and goal');
+    return;
+  }
+
+  if (!regen) {
+    // Update user profile with onboarding data
+    APP.user = {
+      ...APP.user,
+      name,
+      goal,
+      hours,
+      deadline,
+      level: selectedLevel,
+      topics: selectedTopics,
+      context
+    };
+
+    // Save updated profile to backend
+    try {
+      const response = await apiCall('/api/users', {
+        method: 'POST',
+        body: JSON.stringify(APP.user)
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        APP.user = userData;
+        saveToStorage();
+      }
+    } catch (error) {
+      console.warn('Failed to update user profile:', error);
+    }
+  }
+
+  showLoading('Crafting your personalized AI study plan...');
+
+  try {
+    const plan = await callAI_StudyPlan();
+    APP.plan = plan;
+    APP.progress = initializeProgress(plan);
+    saveToStorage();
+    hideLoading();
+    showMainApp();
+    showToast('success', '🎉 Plan Generated!', `${plan.weeks.reduce((a,w)=>a+w.days.length,0)} days of structured learning ready`);
+    navigate('dashboard');
+  } catch(err) {
+    hideLoading();
+    showToast('warning', '⚠️ Using Offline Mode', 'Generated plan without API (add API key in Settings)');
+    APP.plan = generateFallbackPlan();
+    APP.progress = initializeProgress(APP.plan);
+    saveToStorage();
+    showMainApp();
+    navigate('dashboard');
+  }
+}
+
+// ===== AI INTEGRATION: BACKEND API =====
+async function callAI_StudyPlan() {
+  const response = await apiCall('/api/plans/generate', {
+    method: 'POST',
+    body: JSON.stringify(APP.user)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate plan');
+  }
+
+  return await response.json();
+}
+
+async function callHuggingFace(prompt) {
+  const response = await fetch(
+    "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${APP.apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        inputs: `<s>[INST] ${prompt} [/INST]`,
+        parameters: { max_new_tokens: 800, temperature: 0.7, return_full_text: false }
+      })
+    }
+  );
+  if (!response.ok) throw new Error('HuggingFace API failed');
+  const data = await response.json();
+  return Array.isArray(data) ? data[0].generated_text : data.generated_text || '';
+}
+
+async function callAI_Chat(userMessage) {
+  const u = APP.user;
+  const history = APP.chatHistory.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+
+  const prompt = `You are StudyForge AI, an intelligent study companion for ${u?.name || 'a student'}.
+Context: Goal: ${u?.goal}, Level: ${u?.level}, Hours/day: ${u?.hours}
+Current streak: ${APP.streak} days. XP: ${APP.xp}.
+Recent conversation:
+${history}
+User: ${userMessage}
+Give a helpful, encouraging, concise response about their study journey. Be specific and actionable.`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return data.content.map(c => c.text || '').join('').trim();
+    }
+  } catch(e) {}
+
+  if (APP.apiKey) {
+    return await callHuggingFace(prompt);
+  }
+
+  return generateOfflineResponse(userMessage);
+}
+
+async function callAI_Adapt(missedTasks) {
+  const prompt = `Study plan adaptation needed.
+User: ${APP.user?.name}, Goal: ${APP.user?.goal}
+Missed tasks: ${missedTasks.map(t=>t.title).join(', ')}
+Current streak: ${APP.streak}
+Provide 3 specific rescheduling suggestions in JSON array format:
+[{"suggestion":"...", "action":"reschedule|reduce|motivate", "priority":"high|medium"}]`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.content.map(c => c.text || '').join('');
+      try { return JSON.parse(text.match(/\[.*\]/s)?.[0] || '[]'); } catch(e) {}
+    }
+  } catch(e) {}
+  return getDefaultAdaptations(missedTasks);
+}
+
+// ===== PROMPTS =====
+function buildStudyPlanPrompt(u) {
+  const weeksNeeded = u.deadline ? Math.ceil((new Date(u.deadline) - new Date()) / (7*24*60*60*1000)) : 4;
+  return `Create a detailed, personalized study plan in JSON format.
+
+Student: ${u.name}
+Goal: ${u.goal}
+Skill Level: ${u.level}
+Hours per day: ${u.hours}
+Duration: ${Math.max(1, weeksNeeded)} weeks
+Topics focus: ${u.topics?.join(', ') || 'General'}
+Context: ${u.context || 'None'}
+
+Generate a JSON study plan with this EXACT structure:
+{
+  "title": "Plan title",
+  "goal": "Goal summary",
+  "totalWeeks": number,
+  "dailyHours": number,
+  "weeks": [
+    {
+      "weekNum": 1,
+      "theme": "Week theme",
+      "weeklyGoal": "What to achieve this week",
+      "days": [
+        {
+          "day": "Monday",
+          "date": "Day 1",
+          "type": "study|revision|break|assessment",
+          "tasks": [
+            {
+              "id": "t1",
+              "title": "Task name",
+              "description": "What to do",
+              "duration": 60,
+              "difficulty": "easy|medium|hard",
+              "topic": "topic name",
+              "resources": ["resource1"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+Return ONLY valid JSON, no markdown, no explanation. Include breaks every 6th day. Make it progressive — easier topics first.`;
+}
+
+// ===== PARSE AI RESPONSE =====
+function parseAIPlanResponse(text) {
+  try {
+    const cleaned = text.replace(/```json|```/g,'').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const plan = JSON.parse(jsonMatch[0]);
+      if (plan.weeks && Array.isArray(plan.weeks)) return plan;
+    }
+  } catch(e) {}
+  return generateFallbackPlan();
+}
+
+// ===== FALLBACK PLAN GENERATOR =====
+function generateFallbackPlan() {
+  const u = APP.user || { goal: 'DSA', level: 'Beginner', hours: 3, topics: ['Arrays','Trees'] };
+  const topics = u.topics?.length > 0 ? u.topics : ['Arrays', 'Strings', 'Trees', 'Graphs'];
+  const weeks = [];
+
+  for (let w = 0; w < 4; w++) {
+    const days = [];
+    const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    for (let d = 0; d < 7; d++) {
+      const isBreak = d === 6;
+      const isRevision = d === 5;
+      const topic = topics[(w * 7 + d) % topics.length];
+      days.push({
+        day: dayNames[d],
+        date: `Day ${w*7+d+1}`,
+        type: isBreak ? 'break' : isRevision ? 'revision' : 'study',
+        tasks: isBreak ? [] : isRevision ? [
+          { id: `t${w}${d}r`, title: `Revision: Week ${w+1} Concepts`, description: 'Review all topics from this week', duration: u.hours * 60, difficulty: 'easy', topic: 'Revision', resources: ['Notes', 'LeetCode'] }
+        ] : [
+          { id: `t${w}${d}a`, title: `${topic} — Theory & Concepts`, description: `Learn core concepts of ${topic} with examples`, duration: Math.round(u.hours * 0.4 * 60), difficulty: w < 1 ? 'easy' : w < 2 ? 'medium' : 'hard', topic, resources: ['GeeksforGeeks', 'YouTube'] },
+          { id: `t${w}${d}b`, title: `${topic} — Practice Problems`, description: `Solve ${Math.min(3 + w, 8)} problems on ${topic}`, duration: Math.round(u.hours * 0.6 * 60), difficulty: w < 1 ? 'easy' : w < 2 ? 'medium' : 'hard', topic, resources: ['LeetCode', 'HackerRank'] }
+        ]
+      });
+    }
+    weeks.push({
+      weekNum: w + 1,
+      theme: `Week ${w+1}: ${topics[w % topics.length]}`,
+      weeklyGoal: `Master ${topics[w % topics.length]} and related patterns`,
+      days
+    });
+  }
+
+  return {
+    title: `${u.goal} Study Plan — ${u.level}`,
+    goal: u.goal,
+    totalWeeks: 4,
+    dailyHours: u.hours,
+    weeks
+  };
+}
+
+// ===== INITIALIZE PROGRESS =====
+function initializeProgress(plan) {
+  const progress = [];
+  plan.weeks.forEach(week => {
+    week.days.forEach(day => {
+      day.tasks.forEach(task => {
+        progress.push({
+          taskId: task.id,
+          title: task.title,
+          topic: task.topic,
+          difficulty: task.difficulty,
+          duration: task.duration,
+          weekNum: week.weekNum,
+          day: day.day,
+          date: day.date,
+          status: 'pending',
+          completedAt: null,
+          xpEarned: 0
+        });
+      });
+    });
+  });
+  return progress;
+}
+
+// ===== SHOW MAIN APP =====
+function showMainApp() {
+  document.getElementById('sidebar').style.display = 'flex';
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  updateSidebar();
+  navigate('dashboard');
+}
+
+function updateSidebar() {
+  if (!APP.user) return;
+  document.getElementById('sidebarAvatar').textContent = APP.user.name.charAt(0).toUpperCase();
+  document.getElementById('sidebarName').textContent = APP.user.name;
+  document.getElementById('sidebarStreak').textContent = `🔥 ${APP.streak} day streak`;
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  if (!APP.user) return;
+  updateGreeting();
+  document.getElementById('dashName').textContent = APP.user.name;
+  document.getElementById('dashDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  const completed = APP.progress.filter(t => t.status === 'completed').length;
+  const missed = APP.progress.filter(t => t.status === 'missed').length;
+  const total = APP.progress.length;
+  const weekTasks = getThisWeekTasks();
+  const weekCompleted = weekTasks.filter(t => t.status === 'completed').length;
+  const weekPct = weekTasks.length ? Math.round(weekCompleted / weekTasks.length * 100) : 0;
+  const hoursStudied = APP.progress.filter(t=>t.status==='completed').reduce((a,t)=>a+(t.duration/60),0);
+
+  document.getElementById('stat-completed').textContent = weekCompleted;
+  document.getElementById('stat-hours').textContent = hoursStudied.toFixed(1);
+  document.getElementById('stat-goal-pct').textContent = weekPct + '%';
+  document.getElementById('stat-xp').textContent = APP.xp;
+  document.getElementById('streakNum').textContent = APP.streak;
+
+  if (APP.streak >= 7) {
+    document.getElementById('streakEmoji').textContent = '🏆';
+    document.getElementById('streakLevel').textContent = 'Legend Streak!';
+    document.getElementById('streakMsg').textContent = 'Incredible consistency! You\'re unstoppable!';
+  } else if (APP.streak >= 3) {
+    document.getElementById('streakEmoji').textContent = '🔥';
+    document.getElementById('streakLevel').textContent = 'On Fire!';
+    document.getElementById('streakMsg').textContent = 'Keep the momentum going!';
+  } else if (APP.streak >= 1) {
+    document.getElementById('streakEmoji').textContent = '⚡';
+    document.getElementById('streakLevel').textContent = 'Getting Started';
+    document.getElementById('streakMsg').textContent = 'Great start! Build your streak!';
+  } else {
+    document.getElementById('streakEmoji').textContent = '🌱';
+    document.getElementById('streakLevel').textContent = 'Level 1';
+    document.getElementById('streakMsg').textContent = 'Complete your first task to start your streak!';
+  }
+
+  renderWeekGrid();
+  renderTodayTasks();
+  renderInsights();
+  renderXPLevel();
+  renderActivityChart();
+}
+
+function getThisWeekTasks() {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const weekNum = Math.ceil(APP.progress.length / 14) || 1;
+  return APP.progress.filter(t => t.weekNum === 1);
+}
+
+function renderWeekGrid() {
+  const grid = document.getElementById('weekGrid');
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const today = new Date().getDay();
+  const todayIdx = today === 0 ? 6 : today - 1;
+
+  grid.innerHTML = days.map((d, i) => {
+    const dayTasks = APP.progress.filter(t => {
+      const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      return t.day === dayNames[i] && t.weekNum === 1;
+    });
+    const isToday = i === todayIdx;
+    const allDone = dayTasks.length > 0 && dayTasks.every(t => t.status === 'completed');
+    const anyMissed = dayTasks.some(t => t.status === 'missed');
+    let cls = '';
+    if (isToday) cls = 'today';
+    else if (allDone) cls = 'completed';
+    else if (anyMissed) cls = 'missed';
+
+    return `<div class="day-card ${cls}">
+      <div class="day-name">${d}</div>
+      <div class="day-number">${i + 1}</div>
+      <div class="day-dot"></div>
+    </div>`;
+  }).join('');
+}
+
+function renderTodayTasks() {
+  const container = document.getElementById('todayTasks');
+  const today = new Date().getDay();
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayName = dayNames[today];
+  const tasks = APP.progress.filter(t => t.day === todayName && t.weekNum === 1);
+
+  if (tasks.length === 0) {
+    container.innerHTML = `<div class="text-sm text-muted">🎉 No tasks today — rest day!</div>`;
+    return;
+  }
+
+  container.innerHTML = tasks.map(task => `
+    <div class="task-item ${task.status}" onclick="toggleTask('${task.taskId}')">
+      <div class="task-check">${task.status === 'completed' ? '✓' : task.status === 'missed' ? '✕' : ''}</div>
+      <div class="task-info">
+        <div class="task-title">${task.title}</div>
+        <div class="task-meta">⏱ ${task.duration}min • ${task.topic}</div>
+      </div>
+      <span class="task-badge badge-${task.difficulty}">${task.difficulty}</span>
+    </div>
+  `).join('');
+}
+
+function toggleTask(taskId) {
+  const task = APP.progress.find(t => t.taskId === taskId);
+  if (!task) return;
+
+  if (task.status === 'pending') {
+    task.status = 'completed';
+    task.completedAt = new Date().toISOString();
+    const xpGain = task.difficulty === 'easy' ? 10 : task.difficulty === 'medium' ? 25 : 50;
+    task.xpEarned = xpGain;
+    APP.xp += xpGain;
+    updateStreak();
+    showToast('success', '✅ Task Complete!', `+${xpGain} XP earned! ${MOTIVATIONAL_MSGS[Math.floor(Math.random() * MOTIVATIONAL_MSGS.length)]}`);
+  } else if (task.status === 'completed') {
+    task.status = 'missed';
+    APP.xp = Math.max(0, APP.xp - task.xpEarned);
+    task.xpEarned = 0;
+  } else {
+    task.status = 'pending';
+  }
+
+  saveToStorage();
+  renderTodayTasks();
+  renderInsights();
+  renderXPLevel();
+  renderActivityChart();
+  updateSidebar();
+}
+
+function updateStreak() {
+  const today = new Date().toDateString();
+  const lastDate = localStorage.getItem('sf_lastdate');
+  if (lastDate !== today) {
+    APP.streak++;
+    APP.bestStreak = Math.max(APP.bestStreak, APP.streak);
+    localStorage.setItem('sf_lastdate', today);
+  }
+  document.getElementById('streakNum').textContent = APP.streak;
+  document.getElementById('sidebarStreak').textContent = `🔥 ${APP.streak} day streak`;
+}
+
+function renderInsights() {
+  const container = document.getElementById('insightsContainer');
+  const completed = APP.progress.filter(t => t.status === 'completed').length;
+  const missed = APP.progress.filter(t => t.status === 'missed').length;
+  const total = APP.progress.filter(t => t.status !== 'pending').length;
+  const rate = total > 0 ? Math.round(completed / total * 100) : 0;
+
+  const insights = [];
+
+  if (APP.streak >= 7) insights.push({ cls: 'success', text: `🏆 <strong>Outstanding!</strong> ${APP.streak}-day streak! You\'re in the top 5% of learners.` });
+  else if (APP.streak >= 3) insights.push({ cls: 'success', text: `🔥 <strong>Great consistency!</strong> ${APP.streak} days strong. Keep it up!` });
+  else if (APP.streak === 0 && missed > 0) insights.push({ cls: 'danger', text: `⚠️ <strong>You\'re falling behind.</strong> ${missed} tasks missed. Let\'s reschedule and get back on track.` });
+
+  if (rate >= 80) insights.push({ cls: 'success', text: `📈 <strong>${rate}% completion rate</strong> — Excellent work! Consider increasing difficulty.` });
+  else if (rate >= 50) insights.push({ cls: '', text: `📊 <strong>${rate}% completion rate</strong> — Solid progress. Push a bit harder!` });
+  else if (total > 0) insights.push({ cls: 'warning', text: `📉 <strong>${rate}% completion</strong> — Reduce daily tasks or study shorter focused sessions.` });
+
+  if (completed === 0) insights.push({ cls: '', text: `💡 <strong>Get started!</strong> Click on today\'s tasks to mark them complete.` });
+
+  const todayTasks = APP.progress.filter(t => {
+    const today = new Date().getDay();
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    return t.day === dayNames[today] && t.weekNum === 1;
+  });
+
+  const todayDone = todayTasks.filter(t => t.status === 'completed').length;
+  if (todayTasks.length > 0) {
+    insights.push({ cls: '', text: `⚡ <strong>Today:</strong> ${todayDone}/${todayTasks.length} tasks complete. ${todayDone < todayTasks.length ? 'Finish strong!' : '🎉 Day complete!'}` });
+  }
+
+  container.innerHTML = insights.slice(0,3).map(i => `<div class="insight-card ${i.cls}">${i.text}</div>`).join('') ||
+    `<div class="insight-card">🎯 Complete tasks to see AI insights about your performance!</div>`;
+}
+
+function renderXPLevel() {
+  const level = LEVELS.find(l => APP.xp >= l.min && APP.xp < l.max) || LEVELS[0];
+  const idx = LEVELS.indexOf(level);
+  const pct = Math.round((APP.xp - level.min) / (level.max - level.min) * 100);
+
+  document.getElementById('xpLevelLabel').textContent = `Level ${idx+1} — ${level.name}`;
+  document.getElementById('xpProgress').textContent = `${APP.xp} / ${level.max === Infinity ? '∞' : level.max} XP`;
+  document.getElementById('xpFill').style.width = pct + '%';
+
+  const completed = APP.progress.filter(t => t.status === 'completed').length;
+  const badgesHtml = BADGES.map(b => {
+    let earned = false;
+    if (b.xp && completed >= b.xp) earned = true;
+    if (b.streak && APP.streak >= b.streak) earned = true;
+    if (b.completed && completed >= b.completed) earned = true;
+    return `<div class="badge-chip ${earned ? 'earned' : 'locked'}">${b.icon} ${b.label}</div>`;
+  }).join('');
+  document.getElementById('badgesRow').innerHTML = badgesHtml;
+}
+
+function renderActivityChart() {
+  const chart = document.getElementById('activityChart');
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+  const data = days.map((label, i) => {
+    const tasks = APP.progress.filter(t => t.day === dayNames[i] && t.weekNum === 1);
+    const done = tasks.filter(t => t.status === 'completed').length;
+    const missed = tasks.filter(t => t.status === 'missed').length;
+    return { label, done, missed, total: tasks.length };
+  });
+
+  const maxVal = Math.max(...data.map(d => d.total), 1);
+
+  chart.innerHTML = data.map(d => {
+    const height = Math.round(d.done / maxVal * 80);
+    const isMissed = d.missed > d.done;
+    return `<div class="chart-bar-wrap">
+      <div class="chart-bar ${isMissed ? 'missed':''}" style="height:${height}px;min-height:${height > 0 ? 4 : 0}px"></div>
+      <div class="chart-label">${d.label}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== ADAPT PLAN =====
+async function adaptPlan() {
+  const missed = APP.progress.filter(t => t.status === 'missed');
+  if (missed.length === 0) {
+    showToast('info', '✨ All Good!', 'No missed tasks to adapt. Your plan is on track!');
+    return;
+  }
+  showLoading('Analyzing progress and adapting your plan...');
+  try {
+    const suggestions = await callAI_Adapt(missed);
+    hideLoading();
+    // Reschedule missed tasks to pending
+    missed.forEach(t => { t.status = 'pending'; t.rescheduled = true; });
+    saveToStorage();
+    renderDashboard();
+    const msg = suggestions[0]?.suggestion || `Rescheduled ${missed.length} missed tasks intelligently`;
+    showToast('success', '🧠 Plan Adapted!', msg);
+  } catch(e) {
+    hideLoading();
+    missed.forEach(t => { t.status = 'pending'; t.rescheduled = true; });
+    saveToStorage();
+    showToast('success', '🔄 Rescheduled!', `${missed.length} missed tasks moved to upcoming days`);
+    renderDashboard();
+  }
+}
+
+// ===== PLAN VIEW =====
+function renderPlanView() {
+  if (!APP.plan) return;
+  document.getElementById('planSubtitle').textContent = `${APP.plan.title} • ${APP.plan.totalWeeks} weeks`;
+
+  const container = document.getElementById('planContainer');
+  container.innerHTML = APP.plan.weeks.map(week => `
+    <div class="week-section">
+      <div class="week-title">Week ${week.weekNum}: ${week.theme}</div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="margin-bottom:16px">
+          <span class="text-sm text-muted">🎯 Weekly Goal: </span>
+          <span class="text-sm">${week.weeklyGoal}</span>
+        </div>
+        <div class="task-list">
+          ${week.days.map(day => day.tasks.map(task => {
+            const prog = APP.progress.find(p => p.taskId === task.id);
+            return `
+            <div class="task-item ${prog?.status || ''}" onclick="toggleTask('${task.id}')">
+              <div class="task-check">${prog?.status === 'completed' ? '✓' : prog?.status === 'missed' ? '✕' : ''}</div>
+              <div class="task-info">
+                <div class="task-title">${task.title}</div>
+                <div class="task-meta">${day.day} • ⏱ ${task.duration}min • ${task.topic}</div>
+              </div>
+              <span class="task-badge badge-${task.difficulty}">${task.difficulty}</span>
+            </div>`;
+          }).join('')).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== PROGRESS VIEW =====
+function renderProgressView() {
+  const completed = APP.progress.filter(t => t.status === 'completed').length;
+  const missed = APP.progress.filter(t => t.status === 'missed').length;
+  const total = APP.progress.filter(t => t.status !== 'pending').length;
+  const rate = total > 0 ? Math.round(completed / total * 100) : 0;
+
+  document.getElementById('prog-completed').textContent = completed;
+  document.getElementById('prog-missed').textContent = missed;
+  document.getElementById('prog-consistency').textContent = rate + '%';
+  document.getElementById('prog-best-streak').textContent = APP.bestStreak;
+
+  const allList = document.getElementById('allTasksList');
+  allList.innerHTML = APP.progress.slice(0, 20).map(t => `
+    <div class="task-item ${t.status}">
+      <div class="task-check">${t.status === 'completed' ? '✓' : t.status === 'missed' ? '✕' : '○'}</div>
+      <div class="task-info">
+        <div class="task-title">${t.title}</div>
+        <div class="task-meta">Week ${t.weekNum} • ${t.day} • ${t.topic}</div>
+      </div>
+      <span class="task-badge badge-${t.difficulty}">${t.difficulty}</span>
+    </div>
+  `).join('');
+
+  const log = document.getElementById('activityLog');
+  const completed_tasks = APP.progress.filter(t => t.status === 'completed' && t.completedAt).slice(-8).reverse();
+  log.innerHTML = completed_tasks.length > 0 ?
+    completed_tasks.map(t => `
+      <div class="insight-card success">
+        ✅ <strong>${t.title}</strong><br>
+        <span class="text-xs text-muted">+${t.xpEarned} XP • ${new Date(t.completedAt).toLocaleDateString()}</span>
+      </div>
+    `).join('') :
+    `<div class="text-sm text-muted">No completed tasks yet. Start studying!</div>`;
+}
+
+// ===== CHAT =====
+function initChat() {
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '';
+  const welcome = `Hey ${APP.user?.name || 'there'}! 👋 I'm your AI study companion. I know your plan inside-out and I'm here to help you succeed!
+
+Here's what I can do:
+• 📋 **Explain** any topic in your plan
+• 🔄 **Modify** your schedule  
+• 💡 **Give hints** on practice problems
+• 📊 **Analyze** your progress
+• 🎯 **Suggest** study strategies
+
+What would you like to explore today?`;
+
+  addMessage('ai', welcome);
+  APP.chatHistory = [];
+}
+
+function addMessage(role, content) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  div.innerHTML = `
+    <div class="message-avatar">${role === 'ai' ? '🤖' : (APP.user?.name?.charAt(0) || 'U')}</div>
+    <div class="message-bubble">${content.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addThinking() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message ai'; div.id = 'thinking-msg';
+  div.innerHTML = `<div class="message-avatar">🤖</div><div class="message-bubble"><div class="thinking"><span></span><span></span><span></span></div></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  addMessage('user', msg);
+  APP.chatHistory.push({ role: 'user', content: msg });
+
+  addThinking();
+  try {
+    const reply = await callAI_Chat(msg);
+    document.getElementById('thinking-msg')?.remove();
+    addMessage('ai', reply);
+    APP.chatHistory.push({ role: 'assistant', content: reply });
+    saveToStorage();
+  } catch(e) {
+    document.getElementById('thinking-msg')?.remove();
+    const fallback = generateOfflineResponse(msg);
+    addMessage('ai', fallback);
+    APP.chatHistory.push({ role: 'assistant', content: fallback });
+  }
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+function generateOfflineResponse(msg) {
+  const lower = msg.toLowerCase();
+  if (lower.includes('reschedule') || lower.includes('modify')) return `I can help you reschedule! Go to Dashboard → click "Adapt" to intelligently reschedule missed tasks. Or tell me specifically which day you want to adjust and I'll note it for your next plan generation.`;
+  if (lower.includes('motivat') || lower.includes('help')) return `💪 ${MOTIVATIONAL_MSGS[Math.floor(Math.random() * MOTIVATIONAL_MSGS.length)]}\n\nRemember: consistency beats intensity. Even 30 minutes daily adds up to 182 hours per year!`;
+  if (lower.includes('streak') || lower.includes('progress')) return `📊 Your current streak is **${APP.streak} days**. You've completed **${APP.progress.filter(t=>t.status==='completed').length} tasks** and earned **${APP.xp} XP**. ${APP.streak >= 3 ? '🔥 You\'re on fire!' : 'Keep going to build your streak!'}`;
+  if (lower.includes('plan') || lower.includes('today')) {
+    const today = new Date().getDay();
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const tasks = APP.progress.filter(t => t.day === dayNames[today] && t.weekNum === 1);
+    return tasks.length > 0 ? `Today (${dayNames[today]}) you have **${tasks.length} tasks**:\n${tasks.map(t => `• ${t.title} (${t.duration}min)`).join('\n')}\n\n${tasks.filter(t=>t.status==='completed').length}/${tasks.length} completed so far!` : `No tasks scheduled for today — take a well-deserved rest! 🎉`;
+  }
+  return `Great question! Based on your goal of **${APP.user?.goal}** at **${APP.user?.level}** level:\n\nFocus on understanding fundamentals before jumping to advanced topics. Use the 80/20 rule — 20% theory, 80% practice. Would you like specific resources for any topic in your plan?`;
+}
+
+// ===== REMINDERS =====
+function renderReminders() {
+  const list = document.getElementById('remindersList');
+  const reminders = [
+    { icon: '☀️', title: 'Morning Study Reminder', time: '8:00 AM daily', id: 'morning' },
+    { icon: '🌆', title: 'Evening Review Session', time: '7:00 PM daily', id: 'evening' },
+    { icon: '📅', title: 'Weekly Goal Check', time: 'Every Sunday', id: 'weekly' },
+    { icon: '⚠️', title: 'Missed Task Alert', time: 'When task is skipped', id: 'missed' },
+    { icon: '🔥', title: 'Streak Protection', time: '9:00 PM if not studied', id: 'streak' }
+  ];
+
+  list.innerHTML = reminders.map(r => `
+    <div class="reminder-item">
+      <div class="reminder-icon">${r.icon}</div>
+      <div class="reminder-info">
+        <div class="reminder-title">${r.title}</div>
+        <div class="reminder-time">${r.time}</div>
+      </div>
+      <div class="reminder-toggle">
+        <input type="checkbox" class="toggle-input" id="toggle-${r.id}" checked>
+        <label class="toggle-label" for="toggle-${r.id}"></label>
+      </div>
+    </div>
+  `).join('');
+}
+
+function testReminder(type) {
+  const msgs = {
+    daily: { title: '☀️ Good Morning!', body: `Time to study! Today you have ${APP.progress.filter(t=>{const d=new Date().getDay();const dn=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];return t.day===dn[d]&&t.weekNum===1}).length} tasks scheduled.` },
+    motivate: { title: '💪 You\'ve Got This!', body: MOTIVATIONAL_MSGS[Math.floor(Math.random()*MOTIVATIONAL_MSGS.length)] },
+    missed: { title: '⚠️ Missed Task Alert', body: 'You have unfinished tasks. Click Adapt on dashboard to reschedule them.' },
+    streak: { title: `🔥 Streak: ${APP.streak} Days!`, body: 'Don\'t break your streak! Complete at least one task today.' },
+    adapt: { title: '🧠 Plan Updated', body: 'Your study plan has been adapted based on your progress. Check the dashboard!' }
+  };
+  const m = msgs[type] || msgs.daily;
+  showToast('info', m.title, m.body);
+}
+
+function scheduleReminders() {
+  // Simulate periodic reminders
+  const interval = setInterval(() => {
+    if (!APP.user) return;
+    const mins = new Date().getMinutes();
+    if (mins % 30 === 0) {
+      const today = new Date().getDay();
+      const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const pending = APP.progress.filter(t => t.day === dayNames[today] && t.weekNum === 1 && t.status === 'pending');
+      if (pending.length > 0) {
+        showToast('warning', '⏰ Reminder', `You still have ${pending.length} tasks pending today!`);
+      }
+    }
+  }, 1800000); // every 30 min
+  APP.reminderTimers.push(interval);
+
+  // Initial welcome reminder after 5s
+  setTimeout(() => {
+    if (APP.user) showToast('info', '🤖 StudyForge Ready', `Welcome back, ${APP.user.name}! Let's crush today's goals!`);
+  }, 5000);
+}
+
+// ===== CHAT FUNCTIONS =====
+function initChat() {
+  if (!APP.chatHistory.length) {
+    addChatMessage('ai', 'Hello! I\'m your AI study assistant. Ask me anything about your learning plan, get help with concepts, or request schedule modifications. How can I help you today? 🤖');
+  }
+}
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  addChatMessage('user', message);
+  input.value = '';
+
+  // Show typing indicator
+  const thinking = document.createElement('div');
+  thinking.className = 'thinking';
+  thinking.innerHTML = '<span></span><span></span><span></span>';
+  document.getElementById('chatMessages').appendChild(thinking);
+
+  // Call API
+  apiCall('/api/chat', {
+    method: 'POST',
+    body: JSON.stringify({
+      history: APP.chatHistory,
+      message,
+      progress: { streak: APP.streak, xp: APP.xp, rate: 85 }
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    thinking.remove();
+    addChatMessage('ai', data.response);
+  })
+  .catch(error => {
+    thinking.remove();
+    addChatMessage('ai', 'Sorry, I\'m having trouble connecting right now. Please try again later. 😔');
+    console.error('Chat error:', error);
+  });
+}
+
+function addChatMessage(type, content) {
+  const message = {
+    role: type,
+    content,
+    timestamp: new Date().toISOString()
+  };
+
+  APP.chatHistory.push(message);
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `message ${type}`;
+  msgDiv.innerHTML = `
+    <div class="message-avatar">${type === 'ai' ? '🤖' : APP.user?.name?.charAt(0)?.toUpperCase() || '?'}</div>
+    <div class="message-bubble">${content}</div>
+  `;
+
+  document.getElementById('chatMessages').appendChild(msgDiv);
+  document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+
+  saveToStorage();
+}
+
+function handleChatKey(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendChat();
+  }
+}
+
+// ===== SETTINGS =====
+function renderSettings() {
+  if (!APP.user) return;
+  document.getElementById('profile-name').textContent = APP.user.name;
+  document.getElementById('profile-goal').textContent = APP.user.goal;
+  document.getElementById('profile-level').textContent = APP.user.level;
+  document.getElementById('apiKeyInput').value = APP.apiKey;
+  const status = document.getElementById('apiKeyStatus');
+  status.textContent = APP.apiKey ? '✅ Key saved' : '';
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  APP.apiKey = key;
+  localStorage.setItem('sf_apikey', key);
+  document.getElementById('apiKeyStatus').textContent = key ? '✅ Saved!' : '🗑️ Cleared';
+  showToast('success', '🔑 API Key Updated', key ? 'HuggingFace API key saved' : 'API key cleared');
+}
+
+function resetApp() {
+  if (confirm('Reset all data? This cannot be undone.')) {
+    localStorage.clear();
+    APP = { user: null, plan: null, progress: [], chatHistory: [], streak: 0, bestStreak: 0, xp: 0, apiKey: '', reminderTimers: [] };
+    location.reload();
+  }
+}
+
+function exportPlan() {
+  if (!APP.plan) return;
+  const blob = new Blob([JSON.stringify({ plan: APP.plan, progress: APP.progress, user: APP.user }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'studyforge-plan.json';
+  a.click();
+  showToast('success', '📥 Exported!', 'Your plan saved as JSON file');
+}
+
+function refreshInsights() {
+  renderInsights();
+  showToast('info', '🔄 Refreshed', 'AI insights updated');
+}
+
+// ===== LOADING =====
+function showLoading(msg = 'Processing...') {
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  document.getElementById('loadingMsg').textContent = msg;
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ===== TOASTS =====
+function showToast(type, title, body) {
+  const container = document.getElementById('toastContainer');
+  const icons = { success: '✅', warning: '⚠️', info: 'ℹ️', danger: '🚨' };
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <div class="toast-icon">${icons[type] || 'ℹ️'}</div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-body">${body}</div>
+    </div>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('removing');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+// ===== UTILS =====
+function updateGreeting() {
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+  const el = document.getElementById('greeting');
+  if (el) el.textContent = greet;
+}
+
+function getDefaultAdaptations(missed) {
+  return [
+    { suggestion: `Moved ${missed.length} missed tasks to the next available slots. Reduced daily load by 20%.`, action: 'reschedule', priority: 'high' },
+    { suggestion: 'Consider shorter 25-minute Pomodoro sessions instead of longer blocks.', action: 'reduce', priority: 'medium' },
+    { suggestion: 'Focus on 1 task at a time. Progress > perfection.', action: 'motivate', priority: 'medium' }
+  ];
+}
+</script>
+</body>
+</html>
