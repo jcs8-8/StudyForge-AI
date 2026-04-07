@@ -141,8 +141,7 @@
   .view { display: none; padding: 32px; min-height: 100vh; }
   .view.active { display: block; }
 
-/* Remove login/signup UX (still in DOM, but never visible) */
-/* #view-login, #view-signup { display: none !important; } */
+  /* (Login/Signup removed for frontend-only deploy) */
 
   /* ===== ONBOARDING ===== */
   #view-onboarding {
@@ -764,84 +763,6 @@
   <!-- MAIN -->
   <main class="main">
 
-    <!-- ===== LOGIN VIEW ===== -->
-    <div class="view active" id="view-login">
-      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
-        <div class="onboarding-card" style="max-width: 400px;">
-          <div class="onboarding-header">
-            <div class="hero-badge">🔐 Welcome Back</div>
-            <h1 class="onboarding-title">Sign In</h1>
-            <p class="onboarding-sub">Continue your learning journey</p>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Email *</label>
-              <input type="email" class="form-input" id="login-email" placeholder="your@email.com">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Password *</label>
-              <input type="password" class="form-input" id="login-password" placeholder="Your password">
-            </div>
-
-            <button class="btn btn-primary btn-lg" onclick="login()" id="loginBtn">
-              Sign In
-            </button>
-
-            <div style="text-align: center; margin-top: 16px;">
-              <span class="text-muted">Don't have an account? </span>
-              <a href="#" onclick="showSignup()" class="text-accent">Sign Up</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== SIGNUP VIEW ===== -->
-    <div class="view" id="view-signup">
-      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
-        <div class="onboarding-card" style="max-width: 400px;">
-          <div class="onboarding-header">
-            <div class="hero-badge">🚀 Get Started</div>
-            <h1 class="onboarding-title">Create Account</h1>
-            <p class="onboarding-sub">Join StudyForge AI and unlock your potential</p>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Full Name *</label>
-              <input type="text" class="form-input" id="signup-name" placeholder="John Doe">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Email *</label>
-              <input type="email" class="form-input" id="signup-email" placeholder="your@email.com">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Password *</label>
-              <input type="password" class="form-input" id="signup-password" placeholder="At least 6 characters">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Confirm Password *</label>
-              <input type="password" class="form-input" id="signup-confirm" placeholder="Confirm your password">
-            </div>
-
-            <button class="btn btn-primary btn-lg" onclick="signup()" id="signupBtn">
-              Create Account
-            </button>
-
-            <div style="text-align: center; margin-top: 16px;">
-              <span class="text-muted">Already have an account? </span>
-              <a href="#" onclick="showLogin()" class="text-accent">Sign In</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- ===== ONBOARDING VIEW ===== -->
     <div class="view active" id="view-onboarding">
       <div class="onboarding-card">
@@ -1210,7 +1131,6 @@ let APP = {
   bestStreak: 0,
   xp: 0,
   apiKey: localStorage.getItem('sf_apikey') || '',
-  token: localStorage.getItem('sf_token') || '',
   reminderTimers: []
 };
 
@@ -1244,17 +1164,12 @@ const MOTIVATIONAL_MSGS = [
 ];
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   loadFromStorage();
   updateGreeting();
 
-  // Check if user is authenticated
-  if (APP.token && APP.user) {
-    if (APP.user.goal) showMainApp();
-    else navigate('onboarding');
-  } else {
-    navigate('login'); // Show login by default
-  }
+  if (APP.user && APP.user.goal) showMainApp();
+  else navigate('onboarding');
 
   if (APP.apiKey) document.getElementById('apiKeyInput').value = APP.apiKey;
   scheduleReminders();
@@ -1278,203 +1193,6 @@ function saveToStorage() {
   } catch(e) {}
 }
 
-// ===== NAVIGATION =====
-function showLogin() {
-  navigate('login');
-}
-
-function showSignup() {
-  navigate('signup');
-}
-
-// ===== AUTHENTICATION FUNCTIONS =====
-async function ensureAuthenticatedAndRoute() {
-  // Route immediately if we already have a user in storage.
-  if (APP.token && APP.user) {
-    if (APP.user.goal) showMainApp();
-    else navigate('onboarding');
-    return;
-  }
-
-  try {
-    await autoLoginDemoUser();
-  } catch (e) {
-    console.warn('Auto-auth failed:', e);
-    showToast('warning', 'Offline / Limited Mode', 'Could not auto-login. You can still use onboarding UI.');
-  }
-
-  if (APP.user && APP.user.goal) showMainApp();
-  else navigate('onboarding');
-}
-
-function setAuthData(data) {
-  if (!data) throw new Error('No auth payload returned');
-  APP.token = data.token || '';
-  APP.user = data.user || null;
-  localStorage.setItem('sf_token', APP.token);
-  saveToStorage();
-}
-
-async function autoLoginDemoUser() {
-  // Create a per-browser demo account and store credentials locally.
-  // This avoids exposing a signup/login UI while still using your backend auth.
-  const existingEmail = localStorage.getItem('sf_demo_email');
-  const existingPassword = localStorage.getItem('sf_demo_password');
-
-  let email = existingEmail;
-  let password = existingPassword;
-  let name = localStorage.getItem('sf_demo_name') || 'Demo Learner';
-
-  if (!email || !password) {
-    const uuid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Math.random().toString(16).slice(2) + Date.now().toString(16));
-    name = `Demo Learner ${uuid.slice(0, 6)}`;
-    email = `demo+${uuid.slice(0, 10)}@studyforge.local`;
-    password = `demo-${uuid}`;
-    localStorage.setItem('sf_demo_email', email);
-    localStorage.setItem('sf_demo_password', password);
-    localStorage.setItem('sf_demo_name', name);
-  }
-
-  // Try login first (fast path)
-  try {
-    const loginResp = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-
-    if (loginResp.ok) {
-      const data = await loginResp.json();
-      setAuthData(data);
-      return data;
-    }
-  } catch (e) {
-    // fall through to register
-  }
-
-  // If login failed, register the demo account.
-  const registerResp = await fetch('/api/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password })
-  });
-
-  const data = await registerResp.json().catch(() => null);
-  if (!registerResp.ok) {
-    const errMsg = data?.error || 'Failed to create demo account';
-    throw new Error(errMsg);
-  }
-
-  setAuthData(data);
-  return data;
-}
-
-async function login() {
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-
-  if (!email || !password) {
-    showToast('warning', '⚠️ Required Fields', 'Please fill in all fields');
-    return;
-  }
-
-  const btn = document.getElementById('loginBtn');
-  btn.disabled = true;
-  btn.textContent = 'Signing In...';
-
-  try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      APP.token = data.token;
-      APP.user = data.user;
-      localStorage.setItem('sf_token', APP.token);
-      saveToStorage();
-
-      showToast('success', '🎉 Welcome Back!', `Hello ${data.user.name}!`);
-      if (APP.user.goal) {
-        showMainApp();
-      } else {
-        navigate('onboarding');
-      }
-    } else {
-      showToast('error', '❌ Login Failed', data.error || 'Invalid credentials');
-    }
-  } catch (error) {
-    showToast('error', '❌ Connection Error', 'Please check your internet connection');
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Sign In';
-}
-
-async function signup() {
-  const name = document.getElementById('signup-name').value.trim();
-  const email = document.getElementById('signup-email').value.trim();
-  const password = document.getElementById('signup-password').value;
-  const confirm = document.getElementById('signup-confirm').value;
-
-  if (!name || !email || !password || !confirm) {
-    showToast('warning', '⚠️ Required Fields', 'Please fill in all fields');
-    return;
-  }
-
-  if (password !== confirm) {
-    showToast('warning', '⚠️ Password Mismatch', 'Passwords do not match');
-    return;
-  }
-
-  if (password.length < 6) {
-    showToast('warning', '⚠️ Password Too Short', 'Password must be at least 6 characters');
-    return;
-  }
-
-  const btn = document.getElementById('signupBtn');
-  btn.disabled = true;
-  btn.textContent = 'Creating Account...';
-
-  try {
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      APP.token = data.token;
-      APP.user = data.user;
-      localStorage.setItem('sf_token', APP.token);
-      saveToStorage();
-
-      showToast('success', '🎉 Account Created!', 'Welcome to StudyForge AI!');
-      navigate('onboarding');
-    } else {
-      showToast('error', '❌ Registration Failed', data.error || 'Failed to create account');
-    }
-  } catch (error) {
-    showToast('error', '❌ Connection Error', 'Please check your internet connection');
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Create Account';
-}
-
-function showLogin() {
-  navigate('login');
-}
-
-function showSignup() {
-  navigate('signup');
-}
-
 function navigate(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1493,40 +1211,14 @@ function navigate(view) {
 }
 
 function logout() {
-  APP.token = '';
   APP.user = null;
   APP.plan = null;
   APP.progress = [];
   APP.chatHistory = [];
-  localStorage.removeItem('sf_token');
   saveToStorage();
-  showToast('info', '🔄 Session Reset', 'Re-authenticating...');
-  ensureAuthenticatedAndRoute();
-}
-
-// ===== API HELPER =====
-async function apiCall(endpoint, options = {}) {
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
-    ...options
-  };
-
-  if (APP.token) {
-    config.headers.Authorization = `Bearer ${APP.token}`;
-  }
-
-  const response = await fetch(endpoint, config);
-
-  if (response.status === 401) {
-    // Token expired or invalid
-    logout();
-    throw new Error('Authentication required');
-  }
-
-  return response;
+  showToast('info', '🧹 Reset', 'Profile cleared. Please onboard again.');
+  document.getElementById('sidebar').style.display = 'none';
+  navigate('onboarding');
 }
 
 // ===== ONBOARDING FORM HELPERS =====
@@ -1569,21 +1261,7 @@ async function generatePlan(regen = false) {
       topics: selectedTopics,
       context
     };
-
-    // Save updated profile to backend
-    try {
-      const response = await apiCall('/api/users', {
-        method: 'POST',
-        body: JSON.stringify(APP.user)
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        APP.user = userData;
-        saveToStorage();
-      }
-    } catch (error) {
-      console.warn('Failed to update user profile:', error);
-    }
+    saveToStorage();
   }
 
   showLoading('Crafting your personalized AI study plan...');
@@ -1610,17 +1288,12 @@ async function generatePlan(regen = false) {
 
 // ===== AI INTEGRATION: BACKEND API =====
 async function callAI_StudyPlan() {
-  const response = await apiCall('/api/plans/generate', {
-    method: 'POST',
-    body: JSON.stringify(APP.user)
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to generate plan');
-  }
-
-  return await response.json();
+  if (!APP.apiKey) throw new Error('No API key');
+  const prompt = buildStudyPlanPrompt(APP.user);
+  const text = await callHuggingFace(prompt);
+  const plan = parseAIPlanResponse(text);
+  if (!plan?.weeks) throw new Error('Invalid plan');
+  return plan;
 }
 
 async function callHuggingFace(prompt) {
@@ -2305,77 +1978,6 @@ function scheduleReminders() {
   setTimeout(() => {
     if (APP.user) showToast('info', '🤖 StudyForge Ready', `Welcome back, ${APP.user.name}! Let's crush today's goals!`);
   }, 5000);
-}
-
-// ===== CHAT FUNCTIONS =====
-function initChat() {
-  if (!APP.chatHistory.length) {
-    addChatMessage('ai', 'Hello! I\'m your AI study assistant. Ask me anything about your learning plan, get help with concepts, or request schedule modifications. How can I help you today? 🤖');
-  }
-}
-
-function sendChat() {
-  const input = document.getElementById('chatInput');
-  const message = input.value.trim();
-  if (!message) return;
-
-  addChatMessage('user', message);
-  input.value = '';
-
-  // Show typing indicator
-  const thinking = document.createElement('div');
-  thinking.className = 'thinking';
-  thinking.innerHTML = '<span></span><span></span><span></span>';
-  document.getElementById('chatMessages').appendChild(thinking);
-
-  // Call API
-  apiCall('/api/chat', {
-    method: 'POST',
-    body: JSON.stringify({
-      history: APP.chatHistory,
-      message,
-      progress: { streak: APP.streak, xp: APP.xp, rate: 85 }
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    thinking.remove();
-    addChatMessage('ai', data.response);
-  })
-  .catch(error => {
-    thinking.remove();
-    addChatMessage('ai', 'Sorry, I\'m having trouble connecting right now. Please try again later. 😔');
-    console.error('Chat error:', error);
-  });
-}
-
-function addChatMessage(type, content) {
-  const message = {
-    role: type,
-    content,
-    timestamp: new Date().toISOString()
-  };
-
-  APP.chatHistory.push(message);
-
-  const msgDiv = document.createElement('div');
-  msgDiv.className = `message ${type}`;
-  msgDiv.innerHTML = `
-    <div class="message-avatar">${type === 'ai' ? '🤖' : APP.user?.name?.charAt(0)?.toUpperCase() || '?'}</div>
-    <div class="message-bubble">${content}</div>
-  `;
-
-  document.getElementById('chatMessages').appendChild(msgDiv);
-  document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
-
-  saveToStorage();
-}
-
-function handleChatKey(event) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    sendChat();
-  }
 }
 
 // ===== SETTINGS =====
